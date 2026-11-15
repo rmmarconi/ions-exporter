@@ -1,0 +1,7 @@
+# Example scrape job for ions-exporter
+scrape_configs:
+  - job_name: ions
+    scrape_interval: 60s
+    scrape_timeout: 20s
+    static_configs:
+      - targets: ["ions-exporter:9596"]   # or <host>:9596

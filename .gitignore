@@ -1,0 +1,4 @@
+state/
+*.json.tmp
+ions-state.json
+__pycache__/

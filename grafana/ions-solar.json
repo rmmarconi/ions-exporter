@@ -1,0 +1,2184 @@
+{
+ "title": "IONS-2K M1 Solar",
+ "uid": "ions-solar",
+ "tags": [
+  "solar",
+  "ions",
+  "intelbras"
+ ],
+ "timezone": "browser",
+ "refresh": "1m",
+ "schemaVersion": 39,
+ "editable": true,
+ "description": "Intelbras IONS-2K M1 microinverters via ions-exporter (github.com/rmmarconi/ions-exporter)",
+ "time": {
+  "from": "now/d",
+  "to": "now/d"
+ },
+ "templating": {
+  "list": [
+   {
+    "name": "datasource",
+    "label": "Prometheus",
+    "type": "datasource",
+    "query": "prometheus",
+    "current": {},
+    "hide": 0
+   },
+   {
+    "name": "site",
+    "label": "Site",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "${datasource}"
+    },
+    "query": {
+     "query": "label_values(solar_info{model=~\"IONS.*\"}, site)",
+     "refId": "s"
+    },
+    "definition": "label_values(solar_info{model=~\"IONS.*\"}, site)",
+    "refresh": 2,
+    "multi": true,
+    "includeAll": true,
+    "current": {
+     "text": [
+      "All"
+     ],
+     "value": [
+      "$__all"
+     ]
+    }
+   },
+   {
+    "name": "inverter",
+    "label": "Inverter",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "${datasource}"
+    },
+    "query": {
+     "query": "label_values(solar_info{site=~\"$site\",model=~\"IONS.*\"}, inverter)",
+     "refId": "v"
+    },
+    "definition": "label_values(solar_info{site=~\"$site\",model=~\"IONS.*\"}, inverter)",
+    "refresh": 2,
+    "multi": true,
+    "includeAll": true,
+    "allValue": ".*",
+    "current": {
+     "text": [
+      "All"
+     ],
+     "value": [
+      "$__all"
+     ]
+    }
+   },
+   {
+    "name": "tariff",
+    "label": "Tariff per kWh",
+    "type": "textbox",
+    "query": "1.00",
+    "current": {
+     "text": "1.00",
+     "value": "1.00"
+    }
+   }
+  ]
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "row",
+   "title": "Now",
+   "collapsed": false,
+   "panels": [],
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Power now",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum(solar_ac_power_watts{site=~\"$site\",inverter=~\"$inverter\"}) or vector(0)",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 0,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watt",
+     "decimals": 0,
+     "noValue": "-",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#FADE2A"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 2,
+   "description": "AC power summed over all inverters. Zero at night (inverters off)."
+  },
+  {
+   "type": "stat",
+   "title": "Produced today",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum(last_over_time(solar_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[18h]))",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 3,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "decimals": 1,
+     "noValue": "-",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#FADE2A"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 3,
+   "description": "Lifetime counter minus the first reading of the day (computed by the exporter)."
+  },
+  {
+   "type": "stat",
+   "title": "Produced in range",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "(sum(max_over_time((solar_energy_total_kwh{site=~\"$site\",inverter=~\"$inverter\"}>0)[$__range:1m]) - min_over_time((solar_energy_total_kwh{site=~\"$site\",inverter=~\"$inverter\"}>0)[$__range:1m])) and (min(count_over_time((solar_energy_total_kwh{site=~\"$site\",inverter=~\"$inverter\"}>0)[$__range:1m])) >= 2)) unless (sum(resets((solar_energy_total_kwh{site=~\"$site\",inverter=~\"$inverter\"}>0)[$__range:1m])) > 0)",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 6,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "decimals": 1,
+     "noValue": "Sem histórico válido",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#FF9830"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 4,
+   "description": "Difference of the lifetime counter over the selected time range. Zero readings are ignored; a counter reset makes it unavailable."
+  },
+  {
+   "type": "stat",
+   "title": "Saved today",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "(sum(last_over_time(solar_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[18h]))) * $tariff",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 10,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "currencyBRL",
+     "decimals": 2,
+     "noValue": "-",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#73BF69"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 5,
+   "description": "Produced today × $tariff (set the tariff variable at the top, price per kWh)."
+  },
+  {
+   "type": "stat",
+   "title": "Saved in range",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "((sum(max_over_time((solar_energy_total_kwh{site=~\"$site\",inverter=~\"$inverter\"}>0)[$__range:1m]) - min_over_time((solar_energy_total_kwh{site=~\"$site\",inverter=~\"$inverter\"}>0)[$__range:1m])) and (min(count_over_time((solar_energy_total_kwh{site=~\"$site\",inverter=~\"$inverter\"}>0)[$__range:1m])) >= 2)) unless (sum(resets((solar_energy_total_kwh{site=~\"$site\",inverter=~\"$inverter\"}>0)[$__range:1m])) > 0)) * $tariff",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 13,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "currencyBRL",
+     "decimals": 2,
+     "noValue": "Sem histórico válido",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#73BF69"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 6,
+   "description": "Produced in range × $tariff. Assumes all production replaces energy you would have bought."
+  },
+  {
+   "type": "stat",
+   "title": "Lifetime energy",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum(last_over_time(solar_energy_total_kwh{site=~\"$site\",inverter=~\"$inverter\"}[7d]))",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 17,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "decimals": 0,
+     "noValue": "-",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#73BF69"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 7
+  },
+  {
+   "type": "stat",
+   "title": "Max temperature",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "max(last_over_time(solar_temperature_celsius{site=~\"$site\",inverter=~\"$inverter\"}[15m]))",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 21,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "celsius",
+     "decimals": 1,
+     "noValue": "-",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#73BF69",
+        "value": null
+       },
+       {
+        "color": "#FF9830",
+        "value": 65
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 8
+  },
+  {
+   "type": "stat",
+   "title": "Inverters online",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum(max_over_time(ions_up{site=~\"$site\",inverter=~\"$inverter\"}[5m])) or vector(0)",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 0,
+    "y": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "-",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#5794F2"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 9,
+   "description": "All inverters go offline at night (Wi-Fi turns off with the inverter)."
+  },
+  {
+   "type": "stat",
+   "title": "DC power now",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum(solar_dc_power_watts{site=~\"$site\",inverter=~\"$inverter\"}) or vector(0)",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 4,
+    "y": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watt",
+     "decimals": 0,
+     "noValue": "-",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#FF9830"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 10
+  },
+  {
+   "type": "stat",
+   "title": "Efficiency now (AC ÷ DC)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum(solar_ac_power_watts{site=~\"$site\",inverter=~\"$inverter\"}) / sum(solar_dc_power_watts{site=~\"$site\",inverter=~\"$inverter\"} > 50)",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 8,
+    "y": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "decimals": 1,
+     "noValue": "-",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#FF9830",
+        "value": null
+       },
+       {
+        "color": "#73BF69",
+        "value": 0.9
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 11,
+   "description": "Only above 50 W DC; efficiency naturally drops at dawn and dusk."
+  },
+  {
+   "type": "stat",
+   "title": "Clipping today (≥ 1990 W)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum(count_over_time((solar_ac_power_watts{site=~\"$site\",inverter=~\"$inverter\"} >= 1990)[18h:1m])) / 60 or vector(0)",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 12,
+    "y": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "h",
+     "decimals": 1,
+     "noValue": "-",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#FF9830"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 12,
+   "description": "Hours (summed over inverters) at the 2000 W limit: the panels could deliver more than the inverter converts."
+  },
+  {
+   "type": "stat",
+   "title": "Grid voltage",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "avg(last_over_time(solar_grid_voltage_volts{site=~\"$site\",inverter=~\"$inverter\"}[15m]))",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 16,
+    "y": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "volt",
+     "decimals": 1,
+     "noValue": "-",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "text"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 13
+  },
+  {
+   "type": "stat",
+   "title": "Power factor",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "avg(last_over_time(solar_power_factor{site=~\"$site\",inverter=~\"$inverter\"}[15m]))",
+     "refId": "A",
+     "instant": true
+    }
+   ],
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 20,
+    "y": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "decimals": 1,
+     "noValue": "-",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "text"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "id": 14,
+   "description": "Close to 100% during the day; drops at dawn and dusk when power is low."
+  },
+  {
+   "id": 15,
+   "type": "row",
+   "title": "Per panel",
+   "collapsed": false,
+   "panels": [],
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 9
+   }
+  },
+  {
+   "type": "bargauge",
+   "title": "Power per panel now",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "last_over_time(solar_pv_power_watts{site=~\"$site\",inverter=~\"$inverter\"}[15m])",
+     "refId": "A",
+     "legendFormat": "{{inverter}} · panel {{pv}}",
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "gridPos": {
+    "h": 11,
+    "w": 12,
+    "x": 0,
+    "y": 10
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watt",
+     "decimals": 0,
+     "min": 0,
+     "noValue": "-",
+     "color": {
+      "mode": "continuous-YlRd"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "left",
+    "sizing": "auto",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "transformations": [
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "Field",
+        "desc": false
+       }
+      ]
+     }
+    }
+   ],
+   "id": 16,
+   "description": "DC power of each panel. A panel well below its neighbours on the same inverter = shade, dirt or a fault."
+  },
+  {
+   "type": "table",
+   "title": "Panels now",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "last_over_time(solar_pv_power_watts{site=~\"$site\",inverter=~\"$inverter\"}[15m])",
+     "refId": "A",
+     "instant": true,
+     "format": "table"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "last_over_time(solar_pv_voltage_volts{site=~\"$site\",inverter=~\"$inverter\"}[15m])",
+     "refId": "B",
+     "instant": true,
+     "format": "table"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "last_over_time(solar_pv_current_amperes{site=~\"$site\",inverter=~\"$inverter\"}[15m])",
+     "refId": "C",
+     "instant": true,
+     "format": "table"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "last_over_time(solar_pv_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[18h])",
+     "refId": "D",
+     "instant": true,
+     "format": "table"
+    }
+   ],
+   "gridPos": {
+    "h": 11,
+    "w": 12,
+    "x": 12,
+    "y": 10
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "center"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Power (W)"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "watt"
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "gradient"
+        }
+       },
+       {
+        "id": "max",
+        "value": 550
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "continuous-YlRd"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Today (kWh)"
+      },
+      "properties": [
+       {
+        "id": "decimals",
+        "value": 2
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "lcd"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "continuous-GrYlRd"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Voltage (V)"
+      },
+      "properties": [
+       {
+        "id": "decimals",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Current (A)"
+      },
+      "properties": [
+       {
+        "id": "decimals",
+        "value": 1
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "sortBy": [
+     {
+      "displayName": "Inverter"
+     }
+    ]
+   },
+   "transformations": [
+    {
+     "id": "merge"
+    },
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "job": true,
+       "instance": true,
+       "site": true,
+       "__name__": true
+      },
+      "indexByName": {
+       "inverter": 0,
+       "pv": 1,
+       "Value #A": 2,
+       "Value #B": 3,
+       "Value #C": 4,
+       "Value #D": 5
+      },
+      "renameByName": {
+       "Value #A": "Power (W)",
+       "Value #B": "Voltage (V)",
+       "Value #C": "Current (A)",
+       "Value #D": "Today (kWh)",
+       "inverter": "Inverter",
+       "pv": "Panel"
+      }
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "Inverter"
+       },
+       {
+        "field": "Panel"
+       }
+      ]
+     }
+    }
+   ],
+   "id": 17,
+   "description": "Last value of each panel (DC side). \"Today\" is computed by the exporter by integrating V × A."
+  },
+  {
+   "type": "bargauge",
+   "title": "Produced today per panel",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "last_over_time(solar_pv_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[18h])",
+     "refId": "A",
+     "legendFormat": "{{inverter}} · panel {{pv}}",
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "gridPos": {
+    "h": 11,
+    "w": 12,
+    "x": 0,
+    "y": 21
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "decimals": 2,
+     "min": 0,
+     "noValue": "-",
+     "color": {
+      "mode": "continuous-YlRd"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "left",
+    "sizing": "auto",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "transformations": [
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "Field",
+        "desc": false
+       }
+      ]
+     }
+    }
+   ],
+   "id": 18
+  },
+  {
+   "type": "bargauge",
+   "title": "Relative performance today (panel ÷ its inverter average)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "last_over_time(solar_pv_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[18h]) / on(inverter) group_left() avg by (inverter) (last_over_time(solar_pv_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[18h]))",
+     "refId": "A",
+     "legendFormat": "{{inverter}} · panel {{pv}}",
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "gridPos": {
+    "h": 11,
+    "w": 12,
+    "x": 12,
+    "y": 21
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "decimals": 0,
+     "min": 0,
+     "noValue": "-",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "#FF9830",
+        "value": 0.85
+       },
+       {
+        "color": "#73BF69",
+        "value": 0.95
+       }
+      ]
+     },
+     "max": 1.2
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "left",
+    "sizing": "auto",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "transformations": [
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "Field",
+        "desc": false
+       }
+      ]
+     }
+    }
+   ],
+   "id": 19,
+   "description": "Each panel compared with the other panels of the same inverter. Persistently below ~85% deserves a look."
+  },
+  {
+   "type": "timeseries",
+   "title": "Power per panel",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_pv_power_watts{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}} · panel {{pv}}"
+    }
+   ],
+   "gridPos": {
+    "h": 10,
+    "w": 24,
+    "x": 0,
+    "y": 32
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watt",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 20
+  },
+  {
+   "type": "timeseries",
+   "title": "Voltage per panel",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_pv_voltage_volts{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}} · panel {{pv}}"
+    }
+   ],
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 42
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "volt",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 21
+  },
+  {
+   "type": "timeseries",
+   "title": "Current per panel",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_pv_current_amperes{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}} · panel {{pv}}"
+    }
+   ],
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 42
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "amp",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 22
+  },
+  {
+   "id": 23,
+   "type": "row",
+   "title": "Per inverter",
+   "collapsed": false,
+   "panels": [],
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 51
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "AC power per inverter (stacked)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_ac_power_watts{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}}"
+    }
+   ],
+   "gridPos": {
+    "h": 9,
+    "w": 16,
+    "x": 0,
+    "y": 52
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watt",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never",
+      "stacking": {
+       "mode": "normal"
+      }
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 24,
+   "description": "Each inverter clips at 2000 W (flat line at the top)."
+  },
+  {
+   "type": "bargauge",
+   "title": "Produced today per inverter",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "last_over_time(solar_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[18h])",
+     "refId": "A",
+     "legendFormat": "{{inverter}}",
+     "instant": true,
+     "format": "time_series"
+    }
+   ],
+   "gridPos": {
+    "h": 9,
+    "w": 8,
+    "x": 16,
+    "y": 52
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "decimals": 1,
+     "min": 0,
+     "noValue": "-",
+     "color": {
+      "mode": "continuous-YlRd"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "left",
+    "sizing": "auto",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "transformations": [
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "Field",
+        "desc": false
+       }
+      ]
+     }
+    }
+   ],
+   "id": 25
+  },
+  {
+   "type": "timeseries",
+   "title": "DC × AC per inverter",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_dc_power_watts{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}} DC"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_ac_power_watts{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "B",
+     "legendFormat": "{{inverter}} AC"
+    }
+   ],
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 61
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watt",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 26,
+   "description": "The gap is the conversion loss (typically 5-7%)."
+  },
+  {
+   "type": "timeseries",
+   "title": "Inverter temperatures",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_temperature_celsius{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}} internal"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_aux_temperature_celsius{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "B",
+     "legendFormat": "{{inverter}} aux {{sensor}}"
+    }
+   ],
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 61
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "celsius",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 27,
+   "description": "Internal = register 5244; aux = 29501/29502 (function 3), exact meaning undocumented."
+  },
+  {
+   "type": "timeseries",
+   "title": "Grid voltage",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_grid_voltage_volts{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}}"
+    }
+   ],
+   "gridPos": {
+    "h": 8,
+    "w": 6,
+    "x": 0,
+    "y": 69
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "volt",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 28
+  },
+  {
+   "type": "timeseries",
+   "title": "AC current",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_grid_current_amperes{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}}"
+    }
+   ],
+   "gridPos": {
+    "h": 8,
+    "w": 6,
+    "x": 6,
+    "y": 69
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "amp",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 29
+  },
+  {
+   "type": "timeseries",
+   "title": "Grid frequency",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_grid_frequency_hertz{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}}"
+    }
+   ],
+   "gridPos": {
+    "h": 8,
+    "w": 6,
+    "x": 12,
+    "y": 69
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "hertz",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 2
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 30
+  },
+  {
+   "type": "timeseries",
+   "title": "Power factor",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "solar_power_factor{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}}"
+    }
+   ],
+   "gridPos": {
+    "h": 8,
+    "w": 6,
+    "x": 18,
+    "y": 69
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "lastNotNull",
+      "min"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 31,
+   "description": "Close to 100% during the day; drops at dawn and dusk when power is low."
+  },
+  {
+   "id": 40,
+   "type": "row",
+   "title": "History",
+   "collapsed": false,
+   "panels": [],
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 77
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Produced per day — this month",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (inverter) (max_over_time(solar_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[1d]))",
+     "refId": "A",
+     "legendFormat": "{{inverter}}"
+    }
+   ],
+   "gridPos": {
+    "h": 9,
+    "w": 24,
+    "x": 0,
+    "y": 78
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "custom": {
+      "fillOpacity": 80,
+      "lineWidth": 1,
+      "spanNulls": false,
+      "showPoints": "never",
+      "stacking": {
+       "mode": "normal"
+      },
+      "drawStyle": "bars"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "sum",
+      "mean",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "1d",
+   "timeFrom": "now/M",
+   "maxDataPoints": 400,
+   "id": 41,
+   "description": "Total produced each day (stacked by inverter). Legend shows total, mean and best day. Bars are evaluated at 00:00 UTC, which matches civil days in the Americas (no production at night)."
+  },
+  {
+   "type": "timeseries",
+   "title": "Produced per day — this year",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (inverter) (max_over_time(solar_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[1d]))",
+     "refId": "A",
+     "legendFormat": "{{inverter}}"
+    }
+   ],
+   "gridPos": {
+    "h": 9,
+    "w": 24,
+    "x": 0,
+    "y": 87
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "custom": {
+      "fillOpacity": 80,
+      "lineWidth": 1,
+      "spanNulls": false,
+      "showPoints": "never",
+      "stacking": {
+       "mode": "normal"
+      },
+      "drawStyle": "bars"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "sum",
+      "mean",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "1d",
+   "timeFrom": "now/y",
+   "maxDataPoints": 400,
+   "id": 42,
+   "description": "Total produced each day (stacked by inverter). Legend shows total, mean and best day. Needs Prometheus retention of at least one year."
+  },
+  {
+   "type": "timeseries",
+   "title": "Daily maximum, last 24 h (inverters)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "max_over_time(solar_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[1d:5m])",
+     "refId": "A",
+     "legendFormat": "{{inverter}}"
+    }
+   ],
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 96
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "custom": {
+      "fillOpacity": 80,
+      "lineWidth": 1,
+      "spanNulls": false,
+      "showPoints": "never",
+      "stacking": {
+       "mode": "normal"
+      },
+      "drawStyle": "bars"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "calcs": [
+      "mean",
+      "max",
+      "sum"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "1d",
+   "id": 43
+  },
+  {
+   "type": "timeseries",
+   "title": "Daily maximum, last 24 h (panels)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "max_over_time(solar_pv_energy_today_kwh{site=~\"$site\",inverter=~\"$inverter\"}[1d:5m])",
+     "refId": "A",
+     "legendFormat": "{{inverter}} · panel {{pv}}"
+    }
+   ],
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 96
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "custom": {
+      "fillOpacity": 80,
+      "lineWidth": 1,
+      "spanNulls": false,
+      "showPoints": "never",
+      "drawStyle": "bars"
+     },
+     "decimals": 2
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "mean",
+      "sum"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "1d",
+   "id": 44
+  },
+  {
+   "type": "timeseries",
+   "title": "Inverter availability",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "ions_up{site=~\"$site\",inverter=~\"$inverter\"}",
+     "refId": "A",
+     "legendFormat": "{{inverter}}"
+    }
+   ],
+   "gridPos": {
+    "h": 6,
+    "w": 24,
+    "x": 0,
+    "y": 105
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "fillOpacity": 12,
+      "lineWidth": 2,
+      "spanNulls": false,
+      "showPoints": "never"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "mean"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 45,
+   "description": "1 = answered the Modbus read. 0 at night."
+  }
+ ]
+}

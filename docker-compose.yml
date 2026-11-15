@@ -1,0 +1,14 @@
+services:
+  ions-exporter:
+    build: .
+    container_name: ions-exporter
+    restart: unless-stopped
+    environment:
+      # name=ip of each IONS-2K M1 (give them fixed IPs on your router)
+      IONS_TARGETS: "micro1=192.168.1.50,micro2=192.168.1.51"
+      SITE: "home"
+      TZ: "America/Sao_Paulo"
+    volumes:
+      - ./state:/state          # keeps today's energy across restarts
+    ports:
+      - "9596:9596"
